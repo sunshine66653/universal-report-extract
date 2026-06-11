@@ -1,0 +1,43 @@
+{
+  "display_name": "A股券商中文年报",
+  "language": "zh",
+  "report_period_hint": "最新一个完整报告期（2024年度）",
+  "llm": {
+    "text_model": "qwen-plus",
+    "vl_model": "qwen-vl-max",
+    "temperature": 0.0,
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "max_chars_context": 32000
+  },
+  "chunking": {
+    "strategy": "auto",
+    "max_chars": 4500,
+    "slice_marker_regex": "^\\s*#\\s*---\\s*PDF\\s*物理切片\\s*[:：]\\s*第\\s*(\\d+)\\s*-\\s*(\\d+)\\s*页\\s*---\\s*$",
+    "heading_levels": 6
+  },
+  "retrieval": {
+    "topk": 12,
+    "weights": {
+      "alias": 4.0,
+      "section_base": 3.0,
+      "text_base": 2.0,
+      "step": 1.0,
+      "company": 10.0,
+      "table": 1.0
+    },
+    "table_signals": ["单位：", "项目", "本期", "上期", "同比", "%"]
+  },
+  "convert": {
+    "engine": "docling",
+    "rotate_detect": true,
+    "mineru_token": "",
+    "mineru_model_version": "vlm",
+    "recognize_images": true
+  },
+  "rules_file": "rules/rules.xlsx",
+  "download": {
+    "adapter": "cninfo",
+    "report_language": "zh",
+    "company_codes": {}
+  }
+}

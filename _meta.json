@@ -1,0 +1,18 @@
+{
+  "name": "universal-report-extract",
+  "version": "1.1.0",
+  "displayName": "Universal Report Extract",
+  "author": "SunOCR",
+  "license": "MIT",
+  "keywords": [
+    "ocr", "pdf", "financial-report", "annual-report", "table-extraction",
+    "metric-extraction", "report-writing", "proofreading", "mineru",
+    "markdown", "excel", "docx", "batch"
+  ],
+  "features": {
+    "ocr": "scripts/ocr.py",
+    "extract-metrics": "scripts/extract_metrics.py",
+    "write-report": "scripts/write_report.py"
+  },
+  "outputs": ["markdown", "docx", "html-comparison", "tables-xlsx", "metrics-xlsx"]
+}

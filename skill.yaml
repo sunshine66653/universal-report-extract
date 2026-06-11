@@ -1,0 +1,42 @@
+name: universal-report-extract
+version: 1.1.0
+author: SunOCR
+description: >
+  Three progressive features for report documents. (1) Pure OCR: a file or a
+  whole folder (nested) into recognized Markdown, Word, an editable
+  original-vs-recognized comparison HTML, and a tables Excel holding every
+  recognized table in document order titled by its section heading. (2) Metric
+  extraction: on top of OCR, an explicitly chosen rule profile extracts metrics
+  into one Excel (batch -> comparison wide sheet). (3) Report mimicry: infer a
+  sample report's metric requirements, extract them from research materials
+  (multi-language locator alignment), and write a styled Word report. Cloud
+  parsing via MinerU (>200-page PDFs auto-split); HTML report assets are
+  self-contained.
+license: MIT
+
+permissions:
+  - network
+  - filesystem
+  - shell
+
+config:
+  MINERU_TOKEN:
+    type: string
+    required: true
+    description: "MinerU cloud API token (mineru.net/apiManage). PDF bytes are uploaded to this service for parsing."
+    secret: true
+  LLM_API_KEY:
+    type: string
+    required: false
+    description: "API key for an OpenAI-compatible LLM endpoint; needed for chart recognition (optional in pure OCR), metric extraction, and report writing."
+    secret: true
+
+entrypoints:
+  - command: python scripts/ocr.py <file-or-folder>
+    description: "Feature 1 — pure OCR: MD + Word + comparison HTML + tables Excel (no metric rules)"
+  - command: python scripts/extract_metrics.py <file-or-folder> --profile <name>
+    description: "Feature 2 — explicit rule-profile metric extraction into one Excel (batch-capable)"
+  - command: python scripts/write_report.py <materials...> --sample <sample>
+    description: "Feature 3 — infer sample's metrics, extract from materials, write a styled report"
+  - command: python -m engine.cli list
+    description: "List available rule profiles"

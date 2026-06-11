@@ -1,0 +1,1217 @@
+{
+  "_sig": "876faf43e43c",
+  "_source": "rules.xlsx",
+  "count": 58,
+  "rules": [
+    {
+      "id": "A8",
+      "name": "公司股基交易量",
+      "source": "管理层讨论与分析/经营层讨论与分析-股票基金交易量；股基交易量；股票交易量加上基金交易量；",
+      "enabled": true,
+      "section_hint": [
+        "管理层讨论与分析/经营层讨论与分析",
+        "经营举措及业绩",
+        "股票基金交易量",
+        "股基交易量",
+        "股票交易量",
+        "股票基金"
+      ],
+      "aliases": [
+        "股票基金交易量/股基交易量/股票交易量/基金交易量/股票基金"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": "规则要求倒算且披露不稳定，缺乏统一年报口径",
+      "group": "rules"
+    },
+    {
+      "id": "D4",
+      "name": "股权承销金额",
+      "source": "管理层讨论与分析/经营层讨论与分析—经营举措及业绩—投资银行业务/股权融资业务—股权主承销金额；境内A股主承销规模；单位为亿元",
+      "enabled": true,
+      "section_hint": [
+        "管理层讨论与分析/经营层讨论与分析",
+        "经营举措及业绩",
+        "投资银行业务",
+        "股权融资业务",
+        "主承销",
+        "IPO"
+      ],
+      "aliases": [
+        "股权融资业务",
+        "股权主承销金额/股权承销金额/股权融资规模",
+        "主承销数量/股权融资项目数量/A股主承销项目/A股IPO数量"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "D5",
+      "name": "股权承销发行数量",
+      "source": "经营分析与战略—经营举措及业绩—投资银行业务/股权融资业务—股权主承销金额发行数量。境内A股主承销数；如果找不到合计数，value和unit返回null，不要随意取别的数量。",
+      "enabled": true,
+      "section_hint": [
+        "管理层讨论与分析/经营层讨论与分析",
+        "经营举措及业绩",
+        "投资银行业务",
+        "股权融资业务",
+        "主承销",
+        "IPO"
+      ],
+      "aliases": [
+        "股权融资业务",
+        "股权主承销金额/股权承销金额/股权融资规模",
+        "主承销数量/股权融资项目数量/A股主承销项目/A股IPO数量"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "D6",
+      "name": "债券承销金额",
+      "source": "经营分析与战略—经营举措及业绩—投资银行业务/债券融资业务—债券主承销金额；单位为亿元",
+      "enabled": true,
+      "section_hint": [
+        "管理层讨论与分析/经营层讨论与分析",
+        "经营举措及业绩",
+        "投资银行业务",
+        "债务融资业务",
+        "债券融资业务",
+        "债券承销",
+        "主承销"
+      ],
+      "aliases": [
+        "债务融资业务/债券融资业务",
+        "债券主承销金额/债券承销金额/债券融资规模",
+        "主承销数量/债券融资项目数量/承销境内债券"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "D7",
+      "name": "债券承销发行数量",
+      "source": "经营分析与战略—经营举措及业绩—投资银行业务—债券融资业务—债券主承销数量。如果找不到合计数，value和unit返回null，不要随意取别的数量。",
+      "enabled": true,
+      "section_hint": [
+        "管理层讨论与分析/经营层讨论与分析",
+        "经营举措及业绩",
+        "投资银行业务",
+        "债务融资业务/债券融资业务",
+        "债券承销",
+        "主承销"
+      ],
+      "aliases": [
+        "债务融资业务/债券融资业务",
+        "债券主承销金额/债券承销金额/债券融资规模",
+        "主承销数量/债券融资项目数量/承销境内债券"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "E1",
+      "name": "证券公司资产管理规模",
+      "source": "经营分析与战略—经营举措及业绩—证券公司资产管理业务；单位为亿元",
+      "enabled": true,
+      "section_hint": [
+        "经营分析与战略",
+        "经营举措及业绩",
+        "公司资产管理",
+        "证券公司资产管理业务",
+        "集合资产管理",
+        "单一资产管理",
+        "专项资产管理"
+      ],
+      "aliases": [
+        "公司资产管理",
+        "公司资产管理规模",
+        "资产管理规模",
+        "资管公司资产管理规模",
+        "集合资产管理",
+        "单一资产管理",
+        "专项资产管理"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I1",
+      "name": "基金公司资产管理规模",
+      "source": "经营分析与战略—经营举措及业绩—基金公司资产管理业务；如无直接注明的数字，则取集团下基金公司管理资产规模合计；单位为亿元",
+      "enabled": true,
+      "section_hint": [
+        "经营分析与战略",
+        "经营举措及业绩",
+        "基金公司资产管理",
+        "基金公司资产管理业务",
+        "公募基金管理业务"
+      ],
+      "aliases": [
+        "公司资产管理规模",
+        "资产管理规模",
+        "基金公司资产管理规模"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F3",
+      "name": "私募基金实缴规模",
+      "source": "公司主要控股子公司基本情况—对应私募基金/私募股权基金子公司—实缴规模/管理规模/基金实缴规模字段；单位为亿元",
+      "enabled": true,
+      "section_hint": [
+        "私募",
+        "私募股权投资业务",
+        "私募基金实缴规模",
+        "私募基金管理业务"
+      ],
+      "aliases": [
+        "私募",
+        "私募股权投资业务",
+        "私募基金实缴规模"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": "当前年报未稳定披露私募基金实缴规模字段，继续跳过",
+      "group": "rules"
+    },
+    {
+      "id": "I2",
+      "name": "母公司投行业务手续费净收入",
+      "source": "母公司财务报表-手续费及佣金净收入-投资银行业务净收入",
+      "enabled": true,
+      "section_hint": [
+        "公司财务报表主要项目注释",
+        "公司财务报表主要项目附注",
+        "母公司财务报表主要项目注释",
+        "母公司财报附注",
+        "母公司财务报表主要项目注释",
+        "母公司财务报表",
+        "手续费及佣金净收入"
+      ],
+      "aliases": [
+        "手续费及佣金净收入",
+        "投资银行业务净收入"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G17",
+      "name": "客户非信用资金存款",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—货币资金—客户非信用资金存款，取合计值；如果未注明非信用资金存款，则用客户资金存款合计-客户信用资金存款计算",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "按币种列示",
+        "客户非信用资金",
+        "货币资金"
+      ],
+      "aliases": [
+        "客户非信用资金存款",
+        "客户资金存款",
+        "客户信用资金存款",
+        "公司自有资金存款"
+      ],
+      "extraction_mode": "prefer_direct_else_subtract",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G21",
+      "name": "客户信用资金存款",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—货币资金—按币种列示—客户信用资金存款，取合计值",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "按币种列示",
+        "客户信用资金",
+        "货币资金"
+      ],
+      "aliases": [
+        "客户非信用资金存款",
+        "客户资金存款",
+        "客户信用资金存款",
+        "公司自有资金存款"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G19",
+      "name": "公司自有资金存款",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—货币资金—公司自有资金存款，取合计值",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "按币种列示",
+        "货币资金",
+        "公司自有资金存款"
+      ],
+      "aliases": [
+        "客户非信用资金存款",
+        "客户资金存款",
+        "客户信用资金存款",
+        "公司自有资金存款"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B4",
+      "name": "境内融资规模",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—融出资金—按类别列示—融资融券业务融出资金。注：对于广发证券用的是净值，是融出资金-境内-账面价值小计减去了减值准备，要+减值准备还原为原值",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "融出资金",
+        "按类别列示",
+        "融资融券业务"
+      ],
+      "aliases": [
+        "境内融资规模",
+        "融出资金",
+        "融资融券业务融出资金",
+        "孖展融资"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I3",
+      "name": "孖展融资规模",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—融出资金—孖展融资/境外融资规模。注：对于广发证券，中金公司减去了减值准备，用的是净值，是融出资金—境外-账面价值小计-（孖展融资代表境外融资，故可用境外代替，而担保物公允价值不能直接表示孖展融资规模），要+减值准备还原为原值。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "融出资金",
+        "按类别列示",
+        "融资融券业务",
+        "孖展融资"
+      ],
+      "aliases": [
+        "境外融资规模",
+        "融出资金",
+        "融资融券业务",
+        "孖展融资"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B15",
+      "name": "境内两融减值准备",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—融出资金—按交易对手/客户类别—中国大陆/境内—减值准备；信用损失准备；不用保留负号",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "按客户类别/按交易对手",
+        "境内/中国大陆",
+        "融资融券业务",
+        "融出资金"
+      ],
+      "aliases": [
+        "减值准备",
+        "境内/中国大陆",
+        "信用损失准备"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G29",
+      "name": "用于套期的名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—用于套期的名义金额（合计）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "套期工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "套期工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G30",
+      "name": "用于非套期的名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—用于非套期的名义金额（合计）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "非套期工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "非套期工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G31",
+      "name": "利率衍生工具名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—利率衍生工具名义金额；如果分开列示需要合并计算：用于套期的利率衍生工具名义金额+用于非套期的利率衍生工具名义金额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "利率衍生工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "利率衍生工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G32",
+      "name": "货币衍生工具名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—货币衍生工具名义金额；如果分开列示需要合并计算：用于套期的货币衍生工具名义金额+用于非套期的货币衍生工具名义金额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "货币衍生工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "货币衍生工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G33",
+      "name": "权益衍生工具名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—权益衍生工具名义金额；如果分开列示需要合并计算：用于套期的权益衍生工具名义金额+用于非套期的权益衍生工具名义金额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "权益衍生工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "权益衍生工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G34",
+      "name": "信用衍生工具名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—信用衍生工具名义金额；如果分开列示需要合并计算：用于套期的信用衍生工具名义金额+用于非套期的信用衍生工具名义金额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "信用衍生工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "信用衍生工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G35",
+      "name": "其他衍生工具名义金额",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—衍生金融工具—其他衍生工具名义金额；如果分开列示需要合并计算：用于套期的其他衍生工具名义金额+用于非套期的其他衍生工具名义金额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "衍生金融工具",
+        "其他衍生工具"
+      ],
+      "aliases": [
+        "用于套期的衍生金融工具",
+        "用于非套期的衍生金融工具",
+        "衍生金融工具",
+        "其他衍生工具",
+        "名义金额",
+        "公允价值"
+      ],
+      "extraction_mode": "prefer_direct_else_formula",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B17",
+      "name": "股票质押业务规模",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—买入返售金融资产—按业务类别列示—股票质押式回购",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "买入返售金融资产",
+        "按业务类别"
+      ],
+      "aliases": [
+        "股票质押式回购",
+        "股票质押业务规模"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B18",
+      "name": "股票质押减值准备",
+      "source": "(注：此指标不加负号）合并财务报表项目注释/合并财务报表主要项目附注—买入返售金融资产—股票质押式回购业务按剩余期限列示—减值准备；若在股票质押式回购无明确对应的减值就取买入返售金融资产的减值。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "买入返售金融资产",
+        "按剩余期限列示",
+        "股票质押式回购业务按剩余期限列示",
+        "股票质押式回购"
+      ],
+      "aliases": [
+        "减值准备",
+        "股票质押式回购"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "G56",
+      "name": "永续债发行规模",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—其他权益工具—永续债发行规模/期末余额",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "其他权益工具",
+        "永续债",
+        "永续次级债券"
+      ],
+      "aliases": [
+        "永续债",
+        "次级永续债",
+        "永续次级债券",
+        "其他权益工具"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B5",
+      "name": "融券规模",
+      "source": "合并财报附注—融券业务—融出证券总额；文字部分/合并报表附注—融资融券业务-融券业务情况-融出证券（是包含转融通在内的总额）；需要总额口径，非仅表内部分。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "融券业务",
+        "融出证券",
+        "融资融券业务"
+      ],
+      "aliases": [
+        "融出证券总额/融出证券",
+        "融券规模",
+        "转融通/转融通融出证券/转融通融入证券"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "C7",
+      "name": "其他权益工具投资持有期间取得的收益",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—投资收益—金融工具持有期间取得的收益—其他权益工具投资（注意保留正负号）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "其他权益工具投资",
+        "投资收益"
+      ],
+      "aliases": [
+        "金融工具持有期间取得的收益/持有期间取得的收益",
+        "其他权益工具投资"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "C18",
+      "name": "处置衍生金融工具取得的收益",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—投资收益—处置金融工具取得的收益—衍生金融工具（注意保留正负号）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注/合并财务报表项目附注",
+        "投资收益",
+        "处置金融工具取得的收益"
+      ],
+      "aliases": [
+        "处置衍生金融工具取得的收益",
+        "衍生金融工具"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "C19",
+      "name": "处置债权投资取得的收益",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—投资收益—处置金融工具取得的收益/(亏损)—债权投资（注意保留正负号）；若未单列“债权投资”则返回value=0，unit=元，不得误取“其他债权投资”。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注/合并财务报表项目附注",
+        "投资收益",
+        "处置金融工具取得的收益"
+      ],
+      "aliases": [
+        "处置金融工具取得的收益",
+        "债权投资"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "C20",
+      "name": "处置其他债权投资取得的收益",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—投资收益—处置金融工具取得的收益—其他债权投资（注意保留正负号）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注/合并财务报表项目附注",
+        "投资收益",
+        "处置金融工具取得的收益"
+      ],
+      "aliases": [
+        "处置金融工具取得的收益",
+        "其他债权投资"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "C21",
+      "name": "衍生金融工具公允价值变动损益",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—公允价值变动收益—衍生金融工具（注意保留正负号）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注/合并财务报表项目附注",
+        "公允价值变动损益",
+        "公允价值变动收益",
+        "公允价值变动损失"
+      ],
+      "aliases": [
+        "公允价值变动收益",
+        "衍生金融工具公允价值变动损益/衍生金融工具",
+        "公允价值变动损益",
+        "公允价值变动损失"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F17",
+      "name": "大宗商品销售收入",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—其他业务收入/其他业务收入成本—大宗商品销售收入，也可按“大宗商品贸易收入”口径提取。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注/合并财务报表项目附注",
+        "大宗商品销售收入",
+        "其他业务收入"
+      ],
+      "aliases": [
+        "大宗商品销售收入/大宗商品贸易收入"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "B13",
+      "name": "母公司两融利息收入",
+      "source": "母公司财务报表附注—利息净收入—融资融券利息收入;若无明确对应，则类似于广发证券取母公司财报附注—利息净收入—融出资金利息收入",
+      "enabled": true,
+      "section_hint": [
+        "财务报告",
+        "公司财务报表主要项目注释",
+        "公司财务报表主要项目附注",
+        "母公司财务报表附注",
+        "母公司财报附注",
+        "母公司财务报表主要项目注释",
+        "母公司财务报表",
+        "利息净收入",
+        "融资融券业务利息收入",
+        "融资融券利息收入",
+        "融出资金利息收入"
+      ],
+      "aliases": [
+        "母公司两融利息收入",
+        "母公司融资融券利息收入",
+        "融资融券利息收入",
+        "融资融券业务利息收入",
+        "融出资金利息收入",
+        "两融利息收入",
+        "利息净收入"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": true,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I4",
+      "name": "私募基金子公司名称",
+      "source": null,
+      "enabled": false,
+      "section_hint": [],
+      "aliases": [],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F1",
+      "name": "私募基金子公司营业收入",
+      "source": "公司主要控股子公司基本情况—对应私募基金/私募股权基金子公司—营业收入；具体公司名称从外部子公司映射获取.原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F2",
+      "name": "私募基金子公司净利润",
+      "source": "公司主要控股子公司基本情况—对应私募基金/私募股权基金子公司—净利润，不要误取利润总额；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I5",
+      "name": "另类子公司名称",
+      "source": null,
+      "enabled": false,
+      "section_hint": [],
+      "aliases": [],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F4",
+      "name": "另类子公司注册资本",
+      "source": "公司主要控股子公司基本情况—对应另类投资子公司—注册资本；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析",
+        "注册资本"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F5",
+      "name": "另类子公司营业收入",
+      "source": "公司主要控股子公司基本情况—对应另类投资子公司—营业收入；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F6",
+      "name": "另类子公司净利润",
+      "source": "公司主要控股子公司基本情况—对应另类投资子公司—净利润；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I6",
+      "name": "期货子公司名称",
+      "source": null,
+      "enabled": false,
+      "section_hint": [],
+      "aliases": [],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F9",
+      "name": "期货子公司净资产",
+      "source": "公司主要控股子公司基本情况—对应期货子公司—净资产；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F7",
+      "name": "期货子公司营业收入",
+      "source": "公司主要控股子公司基本情况—对应期货子公司—营业收入；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F8",
+      "name": "期货子公司净利润",
+      "source": "公司主要控股子公司基本情况—对应期货子公司—净利润；具体公司名称从外部子公司映射获取。原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "I7",
+      "name": "国际子公司名称",
+      "source": null,
+      "enabled": false,
+      "section_hint": [],
+      "aliases": [],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F13",
+      "name": "国际子公司总资产",
+      "source": "公司主要控股子公司基本情况—对应国际子公司—期末总资产；具体公司名称从外部子公司映射获取；原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F14",
+      "name": "国际子公司净资产",
+      "source": "公司主要控股子公司基本情况—对应国际子公司—期末净资产；具体公司名称从外部子公司映射获取；原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F11",
+      "name": "国际子公司营业收入",
+      "source": "公司主要控股子公司基本情况—对应国际子公司—营业收入；具体公司名称从外部子公司映射获取；原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F12",
+      "name": "国际子公司净利润",
+      "source": "公司主要控股子公司基本情况—对应国际子公司—净利润；具体公司名称从外部子公司映射获取；原始数据单位若为亿元，必须转换为万元，转换公式：原始值 × 10000，其他以此类推。返回的\"unit\"必须为万元+货币单位，货币单位可能是美元，港币等等。如果同一类别对应多个公司，需要相加",
+      "enabled": true,
+      "section_hint": [
+        "主要控股子公司基本情况",
+        "主要控股参股公司分析"
+      ],
+      "aliases": [
+        "总资产",
+        "净资产",
+        "营业收入",
+        "营业收入",
+        "利润总额",
+        "净利润"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "F16",
+      "name": "海外财富业务净收入（预估）",
+      "source": "领导讨论后给出预估数",
+      "enabled": false,
+      "section_hint": [],
+      "aliases": [],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": "人工预估值，不在年报内",
+      "group": "rules"
+    },
+    {
+      "id": "H15",
+      "name": "融出资金减值损失转回",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—信用减值损失—融出资金减值损失/(转回)（注意保留正负号）。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "信用减值",
+        "信用减值损失",
+        "信用减值转回"
+      ],
+      "aliases": [
+        "融出资金减值损失/(转回)",
+        "融出资金减值损失转回",
+        "融出资金减值损失"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H16",
+      "name": "债权投资减值损失计提",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—信用减值损失—债权投资减值损失（注意保留正负号）；若未单列“债权投资”则返回value=0，unit=元，不得误取“其他债权投资”。",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "信用减值",
+        "信用减值损失",
+        "信用减值转回"
+      ],
+      "aliases": [
+        "债权投资减值损失"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H17",
+      "name": "其他债权投资减值损失计提 /( 转回 )",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—信用减值损失—其他债权投资减值损失（注意保留正负号）；若未单列“其他债权投资”则返回value=0，unit=元，不得误取“债权投资”",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "信用减值",
+        "信用减值损失",
+        "信用减值转回"
+      ],
+      "aliases": [
+        "其他债权投资减值损失"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H18",
+      "name": "买入返售金融资产减值损失 ( 转回 )/ 计提",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—信用减值损失/买入返售金融资产减值准备变动—买入返售金融资产减值损失（注意保留正负号）",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "信用减值",
+        "信用减值损失",
+        "信用减值转回",
+        "买入返售金融资产"
+      ],
+      "aliases": [
+        "买入返售金融资产减值损失",
+        "买入返售金融资产减值准备"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H21",
+      "name": "大宗商品销售成本",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—其他业务成本—大宗商品销售成本/大宗商品贸易成本",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "其他业务成本",
+        "大宗商品贸易成本",
+        "大宗商品销售成本"
+      ],
+      "aliases": [
+        "其他业务成本",
+        "大宗商品销售成本",
+        "大宗商品贸易成本"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H23",
+      "name": "捐赠支出",
+      "source": "合并财务报表项目注释/合并财务报表主要项目附注—营业外支出—公益性捐赠支出/捐赠支出",
+      "enabled": true,
+      "section_hint": [
+        "合并财务报表项目注释/合并财务报表主要项目附注",
+        "营业外支出"
+      ],
+      "aliases": [
+        "公益性捐赠支出",
+        "捐赠支出"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H24",
+      "name": "非经常性损益总数",
+      "source": "非经常性损益项目和金额—合计",
+      "enabled": true,
+      "section_hint": [
+        "非经常性损益项目和金额"
+      ],
+      "aliases": [
+        "非经常性损益合计",
+        "合计"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "H25",
+      "name": "计入当期损益的政府补助",
+      "source": "非经常性损益项目和金额—计入当期损益的政府补助",
+      "enabled": true,
+      "section_hint": [
+        "非经常性损益项目和金额"
+      ],
+      "aliases": [
+        "计入当期损益的政府补助"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    }
+  ]
+}

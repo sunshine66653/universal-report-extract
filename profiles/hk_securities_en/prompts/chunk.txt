@@ -1,0 +1,29 @@
+{global_prompt}
+Extract ONLY this single metric based on the rule and context below.
+
+Rule:
+- id: {rule_id}
+- name: {rule_name}
+- source / definition: {rule_source}
+- extraction_mode: {extraction_mode}{company_instruction}{calc_instruction}{extra_instruction}
+
+Requirements:
+1. Follow the `source` definition strictly when locating the figure.
+2. If multiple years appear, only take the value for {report_period_hint}.
+3. Keep the ORIGINAL unit; do NOT convert. If the currency is not HKD, return unit like "RMB million", "USD thousand", etc.
+4. Preserve negative signs unless the source explicitly says otherwise (figures in parentheses are negative — convert to a leading minus sign).
+5. If you cannot confirm the value from the context, return null. Never guess.
+
+Output MUST be a JSON object exactly as:
+{{
+  "result": {{
+    "id": "{rule_id}",
+    "name": "{rule_name}",
+    "value": "number or null",
+    "unit": "unit or null",
+    "source_text": "original snippet or null"
+  }}
+}}
+
+Context:
+{context}

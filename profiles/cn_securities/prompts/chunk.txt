@@ -1,0 +1,29 @@
+{global_prompt}
+请基于以下规则和上下文，只抽取这一个指标。
+
+规则：
+- id: {rule_id}
+- name: {rule_name}
+- source: {rule_source}
+- extraction_mode: {extraction_mode}{company_instruction}{calc_instruction}{extra_instruction}
+
+抽取要求：
+1. 严格按照 source 描述寻找。
+2. 若出现多个年度，只提取{report_period_hint}对应数据。
+3. 保持原单位，不要换算。如果货币不是人民币，unit请返回这种形式：如"港币亿元"、"美元万元"。
+4. 除source明确要求不保留负号外，负数请保留负号（如原文为括号表示的负数，请转换为带负号的数字）。
+5. 若无法确认，请返回null，不要猜测数值。
+
+输出必须是 JSON 对象，请返回：
+{{
+  "result": {{
+    "id": "{rule_id}",
+    "name": "{rule_name}",
+    "value": "数值或null",
+    "unit": "单位或null",
+    "source_text": "原文片段或null"
+  }}
+}}
+
+上下文：
+{context}

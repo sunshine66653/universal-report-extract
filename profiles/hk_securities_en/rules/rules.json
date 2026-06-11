@@ -1,0 +1,185 @@
+{
+  "_sig": "83ba98da3387",
+  "_source": "rules.xlsx",
+  "count": 10,
+  "rules": [
+    {
+      "id": "R01",
+      "name": "Total revenue",
+      "source": "Consolidated income statement - total revenue / total revenue and other income for the year",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Income Statement",
+        "Consolidated Statement of Profit or Loss",
+        "Revenue"
+      ],
+      "aliases": [
+        "Total revenue/Revenue/Total revenue and other income"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R02",
+      "name": "Net profit",
+      "source": "Consolidated income statement - profit for the year",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Income Statement",
+        "Consolidated Statement of Profit or Loss"
+      ],
+      "aliases": [
+        "Profit for the year/Net profit"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R03",
+      "name": "Profit attributable to owners",
+      "source": "Profit attributable to owners of the parent / Company",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Income Statement",
+        "Profit attributable to"
+      ],
+      "aliases": [
+        "Profit attributable to owners of the parent/Profit attributable to equity holders"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R04",
+      "name": "Fee and commission income",
+      "source": "Fee and commission income from brokerage / investment banking / asset management",
+      "enabled": true,
+      "section_hint": [
+        "Revenue",
+        "Fee and commission",
+        "Notes to the Financial Statements"
+      ],
+      "aliases": [
+        "Fee and commission income/Commission income"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R05",
+      "name": "Interest income",
+      "source": "Interest income for the year",
+      "enabled": true,
+      "section_hint": [
+        "Revenue",
+        "Interest income",
+        "Notes"
+      ],
+      "aliases": [
+        "Interest income"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R06",
+      "name": "Total assets",
+      "source": "Consolidated statement of financial position - total assets",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Statement of Financial Position",
+        "Balance Sheet",
+        "Total assets"
+      ],
+      "aliases": [
+        "Total assets"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R07",
+      "name": "Total liabilities",
+      "source": "Consolidated statement of financial position - total liabilities",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Statement of Financial Position",
+        "Balance Sheet",
+        "Total liabilities"
+      ],
+      "aliases": [
+        "Total liabilities"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R08",
+      "name": "Total equity",
+      "source": "Total equity / total equity attributable to owners",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Statement of Financial Position",
+        "Equity",
+        "Total equity"
+      ],
+      "aliases": [
+        "Total equity/Total equity attributable to owners"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R09",
+      "name": "Basic earnings per share",
+      "source": "Basic earnings per share (EPS) for the year",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Income Statement",
+        "Earnings per share",
+        "Basic"
+      ],
+      "aliases": [
+        "Basic earnings per share/Basic EPS"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    },
+    {
+      "id": "R10",
+      "name": "Cash and bank balances",
+      "source": "Cash and bank balances / cash and cash equivalents at year end",
+      "enabled": true,
+      "section_hint": [
+        "Consolidated Statement of Financial Position",
+        "Cash",
+        "Notes"
+      ],
+      "aliases": [
+        "Cash and bank balances/Cash and cash equivalents"
+      ],
+      "extraction_mode": "direct",
+      "allow_parent_note": false,
+      "skip_reason": null,
+      "group": "rules"
+    }
+  ]
+}
