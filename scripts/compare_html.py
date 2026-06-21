@@ -83,6 +83,332 @@ def split_md_by_slices(md_text: str, total_pages: int) -> list[dict]:
 
 
 # ==============================================================================
+# Block-level anchoring  (MD block  ->  PDF page + vertical extent)
+# ------------------------------------------------------------------------------
+# Anchor source priority:
+#   1. OCR engine coordinates — MinerU middle.json (auto-discovered next to the
+#      MD, or passed via --anchors). Works on SCANNED PDFs, which is the real
+#      use case; this is the only source that can be cell-accurate for tables.
+#   2. PyMuPDF text layer (digital PDFs only).
+#   3. Nothing found -> JS proportional fallback (and a loud build warning).
+# Tables are paired to table anchors BY ORDER (hard match, no fuzzy) — the MD
+# is the engine's own output so table order is identical. Text blocks are
+# fuzzy-matched monotonically inside the segments between table checkpoints.
+# ==============================================================================
+
+import json
+from difflib import SequenceMatcher
+
+_DROP_RE = re.compile(r"[^\w\u4e00-\u9fff]", re.UNICODE)
+_DATAURI_RE = re.compile(r"data:[^)\s]+")
+
+
+def _norm_text(s: str) -> str:
+    return _DROP_RE.sub("", (s or "")).lower()
+
+
+def iter_md_blocks(md: str):
+    """Yield top-level MD blocks (blank-line separated, fence/table aware)."""
+    lines = (md or "").splitlines()
+    block: list[str] = []
+    i, n, in_fence = 0, len(lines), False
+    while i < n:
+        ln = lines[i]
+        st = ln.strip().lower()
+        if st.startswith("```") or st.startswith("~~~"):
+            in_fence = not in_fence
+            block.append(ln); i += 1; continue
+        if in_fence:
+            block.append(ln); i += 1; continue
+        if st.startswith("<table"):
+            if "".join(block).strip():
+                yield "\n".join(block); block = []
+            tbl = [ln]; i += 1
+            while i < n and "</table>" not in lines[i].lower():
+                tbl.append(lines[i]); i += 1
+            if i < n:
+                tbl.append(lines[i]); i += 1
+            yield "\n".join(tbl); continue
+        if st == "":
+            if "".join(block).strip():
+                yield "\n".join(block)
+            block = []; i += 1; continue
+        block.append(ln); i += 1
+    if "".join(block).strip():
+        yield "\n".join(block)
+
+
+_PIPE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{3,}", re.MULTILINE)
+
+
+def _is_md_table(block: str) -> bool:
+    s = block.lstrip().lower()
+    if s.startswith("<table"):
+        return True
+    lines = block.splitlines()
+    return (len(lines) >= 2 and "|" in lines[0]
+            and bool(_PIPE_SEP_RE.match(lines[1])))
+
+
+# ---- anchor source 1: MinerU middle.json ------------------------------------
+
+def find_engine_json(md_path: Path, pdf_stem: str) -> Path | None:
+    """Look for MinerU output near the MD: same dir, parent, and the typical
+    <stem>/auto/ layout. middle.json preferred over content_list.json."""
+    cands: list[Path] = []
+    seen: set[Path] = set()
+    for root in (md_path.parent, md_path.parent.parent):
+        if not root or not root.exists():
+            continue
+        for pat in ("*middle.json", "*/*middle.json", "*/auto/*middle.json",
+                    "*content_list.json", "*/*content_list.json",
+                    "*/auto/*content_list.json"):
+            for c in root.glob(pat):
+                if c.is_file() and c not in seen:
+                    seen.add(c); cands.append(c)
+    if not cands:
+        return None
+
+    def score(p: Path):
+        s = 10 if "middle" in p.name.lower() else 0
+        if pdf_stem and pdf_stem.lower() in p.stem.lower():
+            s += 5
+        return (s, p.stat().st_mtime)
+
+    return max(cands, key=score)
+
+
+def _middle_leaf_text(blk: dict) -> str:
+    parts: list[str] = []
+    for line in blk.get("lines") or []:
+        for sp in line.get("spans") or []:
+            parts.append(sp.get("content") or sp.get("html") or "")
+    return " ".join(parts)
+
+
+def _middle_all_text(blk: dict) -> str:
+    subs = blk.get("blocks")
+    if subs:
+        return " ".join(_middle_all_text(s) for s in subs)
+    return _middle_leaf_text(blk)
+
+
+def _middle_lines(blk: dict, ph: float) -> list[dict]:
+    """Per-line anchors {norm,yf0,yf1} from a (possibly nested) block."""
+    subs = blk.get("blocks")
+    if subs:
+        out: list[dict] = []
+        for s in subs:
+            out.extend(_middle_lines(s, ph))
+        return out
+    out = []
+    for line in blk.get("lines") or []:
+        bbox = line.get("bbox")
+        if not bbox or len(bbox) < 4:
+            continue
+        nt = _norm_text(" ".join(sp.get("content") or ""
+                                 for sp in line.get("spans") or []))
+        if nt:
+            out.append({"norm": nt, "yf0": bbox[1] / ph, "yf1": bbox[3] / ph})
+    return out
+
+
+def _anchors_from_middle(data: dict) -> list[dict]:
+    out: list[dict] = []
+    for page in data.get("pdf_info") or []:
+        pidx = page.get("page_idx", 0)
+        ps = page.get("page_size") or [0, 0]
+        ph = float(ps[1] or 1.0)
+        for blk in (page.get("para_blocks") or page.get("preproc_blocks") or []):
+            bbox = blk.get("bbox")
+            if not bbox or len(bbox) < 4:
+                continue
+            btype = (blk.get("type") or "").lower()
+            is_table = "table" in btype
+            nt = _norm_text(_middle_all_text(blk))
+            if not nt and not is_table and "image" not in btype:
+                continue
+            a = {"page": pidx + 1, "table": is_table, "norm": nt,
+                 "yf0": bbox[1] / ph, "yf1": bbox[3] / ph}
+            if not is_table:
+                lines = _middle_lines(blk, ph)
+                if lines:
+                    a["lines"] = lines
+            out.append(a)
+    return out
+
+
+def _anchors_from_content_list(items: list) -> list[dict]:
+    """content_list.json has no page_size; normalize bbox per page. If all
+    coords look <=1000 assume 0–1000 normalized, else use the per-page max y."""
+    per_page: dict[int, float] = {}
+    rows = []
+    for it in items or []:
+        bbox, pidx = it.get("bbox"), it.get("page_idx")
+        if not bbox or len(bbox) < 4 or pidx is None:
+            continue
+        rows.append((pidx, bbox, it))
+        per_page[pidx] = max(per_page.get(pidx, 0.0), float(bbox[3]))
+    if not rows:
+        return []
+    norm1000 = all(v <= 1000.5 for v in per_page.values())
+    out: list[dict] = []
+    for pidx, bbox, it in rows:
+        ph = 1000.0 if norm1000 else (per_page[pidx] * 1.02 or 1.0)
+        btype = (it.get("type") or "").lower()
+        is_table = btype == "table"
+        nt = _norm_text(it.get("text") or it.get("table_body") or "")
+        if not nt and not is_table and btype != "image":
+            continue
+        out.append({"page": pidx + 1, "table": is_table, "norm": nt,
+                    "yf0": bbox[1] / ph, "yf1": bbox[3] / ph})
+    return out
+
+
+def load_engine_anchors(md_path: Path, pdf_stem: str,
+                        anchors_path=None) -> tuple[list[dict] | None, Path | None]:
+    p = Path(anchors_path) if anchors_path else find_engine_json(md_path, pdf_stem)
+    if not p or not p.exists():
+        return None, None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return None, p
+    if isinstance(data, dict) and "pdf_info" in data:
+        return _anchors_from_middle(data), p
+    if isinstance(data, list):
+        return _anchors_from_content_list(data), p
+    return None, p
+
+
+# ---- anchor source 2: digital-PDF text layer --------------------------------
+
+def pdf_block_anchors(doc, start: int, end: int) -> list[dict]:
+    out: list[dict] = []
+    for pno in range(start, end + 1):
+        if pno < 1 or pno > doc.page_count:
+            continue
+        page = doc[pno - 1]
+        ph = page.rect.height or 1.0
+        for b in page.get_text("dict")["blocks"]:
+            if b.get("type") != 0:          # 0 = text block
+                continue
+            lines = []
+            for ln in b.get("lines") or []:
+                lb = ln.get("bbox")
+                nt = _norm_text("".join(sp.get("text", "")
+                                        for sp in ln.get("spans") or []))
+                if nt and lb:
+                    lines.append({"norm": nt,
+                                  "yf0": lb[1] / ph, "yf1": lb[3] / ph})
+            if not lines:
+                continue
+            bb = b["bbox"]
+            out.append({"page": pno, "table": False,
+                        "norm": "".join(l["norm"] for l in lines),
+                        "yf0": bb[1] / ph, "yf1": bb[3] / ph,
+                        "lines": lines})
+    return out
+
+
+# ---- alignment ---------------------------------------------------------------
+
+def _sim(a: str, b: str) -> float:
+    a, b = a[:200], b[:200]
+    sm = SequenceMatcher(None, a, b)
+    if sm.real_quick_ratio() < 0.3:
+        return 0.0
+    return sm.ratio()
+
+
+def _fuzzy_monotone(md_meta, res, m_lo, m_hi, anchors, a_lo, a_hi,
+                    floor: float = 0.35):
+    j = a_lo
+    for i in range(m_lo, m_hi):
+        b = md_meta[i]
+        if b["table"] or not b["norm"]:
+            continue
+        best, bs, bj = None, 0.0, j
+        for k in range(j, a_hi):
+            a = anchors[k]
+            if a["table"]:
+                continue
+            s = _sim(b["norm"], a["norm"])
+            if s > bs:
+                bs, best, bj = s, a, k
+        if best and bs >= floor:
+            res[i] = best
+            j = bj + 1
+
+
+def _table_from_text_anchors(b: dict, anchors: list[dict], j_start: int):
+    """No table-typed anchors (plain text layer): locate the table by finding
+    the run of consecutive same-page text anchors whose content is contained
+    in the table's cell text, and take the union of their bboxes."""
+    start = None
+    for k in range(j_start, len(anchors)):
+        key = anchors[k]["norm"][:60]
+        if len(key) >= 4 and key in b["norm"]:
+            start = k
+            break
+    if start is None:
+        return None, j_start
+    page, end = anchors[start]["page"], start
+    k = start + 1
+    while k < len(anchors) and anchors[k]["page"] == page:
+        key = anchors[k]["norm"][:60]
+        if len(key) >= 4 and key in b["norm"]:
+            end = k; k += 1
+        else:
+            break
+    return {"page": page, "table": True,
+            "yf0": min(anchors[i]["yf0"] for i in range(start, end + 1)),
+            "yf1": max(anchors[i]["yf1"] for i in range(start, end + 1))}, end + 1
+
+
+def align_section_blocks(md_meta: list[dict],
+                         anchors: list[dict]) -> list[dict | None]:
+    """Tables paired strictly by ordinal when the anchor source types them
+    (engine JSON); otherwise inferred from contained text-anchor runs. Text
+    fuzzy-matched monotonically. Unmatched -> None (JS proportional)."""
+    res: list[dict | None] = [None] * len(md_meta)
+    if not anchors:
+        return res
+    anchors = sorted(anchors, key=lambda a: (a["page"], a["yf0"]))
+    an_t = [i for i, a in enumerate(anchors) if a["table"]]
+
+    if not an_t:
+        # plain text-layer anchors: one monotone pass, tables by containment
+        j = 0
+        for i, b in enumerate(md_meta):
+            if not b["norm"]:
+                continue
+            if b["table"]:
+                m, j = _table_from_text_anchors(b, anchors, j)
+                if m:
+                    res[i] = m
+                continue
+            best, bs, bj = None, 0.0, j
+            for k in range(j, len(anchors)):
+                s = _sim(b["norm"], anchors[k]["norm"])
+                if s > bs:
+                    bs, best, bj = s, anchors[k], k
+            if best and bs >= 0.35:
+                res[i] = best
+                j = bj + 1
+        return res
+
+    md_t = [i for i, b in enumerate(md_meta) if b["table"]]
+    pairs = list(zip(md_t, an_t))          # order-preserving hard pairing
+    for mi, ai in pairs:
+        res[mi] = anchors[ai]
+    checkpoints = [(-1, -1)] + pairs + [(len(md_meta), len(anchors))]
+    for (m0, a0), (m1, a1) in zip(checkpoints, checkpoints[1:]):
+        _fuzzy_monotone(md_meta, res, m0 + 1, m1, anchors, a0 + 1, a1)
+    return res
+
+
+# ==============================================================================
 # PDF page rendering (PyMuPDF)
 # ==============================================================================
 
@@ -370,7 +696,8 @@ header{position:sticky;top:0;z-index:20;width:100%;padding:10px clamp(16px,3vw,3
 .edit-hint{font-size:12px;color:var(--muted)}
 main{flex:1;width:100%;max-width:var(--maxw);margin:0 auto;
   padding:30px clamp(16px,3vw,32px) 44px}
-.page-section{position:relative;margin-bottom:24px;overflow:hidden;border-radius:var(--radius-xl);
+.page-section{position:relative;margin-bottom:24px;border-radius:var(--radius-xl);
+  overflow:clip;  /* NOT overflow:hidden — that creates a scroll container and silently kills the sticky image column */
   background:var(--surface);border:1px solid var(--glass-stroke);box-shadow:var(--shadow);
   -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%)}
 .page-header{position:relative;z-index:1;display:flex;align-items:center;gap:12px;
@@ -391,12 +718,31 @@ main{flex:1;width:100%;max-width:var(--maxw);margin:0 auto;
   color:#fff;letter-spacing:0.05em}
 .btn-sec:hover{background:rgba(255,255,255,0.32)}
 .page-content{position:relative;z-index:1;display:grid;
-  grid-template-columns:minmax(320px,42%) minmax(0,1fr);gap:18px;padding:18px;align-items:start}
-.image-panel{position:sticky;top:104px;align-self:start;overflow-y:auto;
-  max-height:calc(100vh - 130px);border-radius:var(--radius-lg);
-  border:1px solid var(--border);
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;padding:18px;align-items:start}
+.image-col{position:sticky;top:calc(var(--hdr-h,170px) + 12px);
+  height:calc(100vh - var(--hdr-h,170px) - 26px);min-height:420px;align-self:start}
+.image-panel{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;scrollbar-width:thin;
+  scrollbar-color:rgba(30,110,232,0.35) transparent;
+  border-radius:var(--radius-lg);border:1px solid var(--border);
   background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,250,255,0.90));
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.72),var(--shadow-soft)}
+.image-panel::-webkit-scrollbar{width:10px}
+.image-panel::-webkit-scrollbar-thumb{background:rgba(30,110,232,0.28);
+  border-radius:999px;border:2px solid transparent;background-clip:content-box}
+.image-panel::-webkit-scrollbar-thumb:hover{background:rgba(30,110,232,0.46);
+  border:2px solid transparent;background-clip:content-box}
+.image-track{position:relative;display:flex;flex-direction:column}
+::highlight(sync-sentence){background:rgba(245,165,36,0.40);color:inherit}
+.page-unit{margin:0;padding:0}
+.sync-flash{position:absolute;left:0;right:0;height:44px;
+  pointer-events:none;border-radius:6px;opacity:0;z-index:2;
+  background:linear-gradient(90deg,rgba(245,165,36,0.32),rgba(245,165,36,0.10));
+  border:1px solid rgba(245,165,36,0.60);
+  box-shadow:0 0 0 1px rgba(245,165,36,0.18);
+  transition:opacity .25s ease}
+.sync-flash.show{opacity:1}
+.md-block.md-table[data-page] td,.md-block.md-table[data-page] th{cursor:pointer}
 .image-panel img{display:block;width:100%;height:auto;background:#fff;
   border-bottom:1px solid rgba(14,26,38,0.08)}
 .page-no{padding:4px 12px;font-size:11px;color:var(--muted);text-align:right;
@@ -416,6 +762,11 @@ textarea.md-source:focus{border-color:var(--brand-primary);
 .page-section.editing .markdown-content{display:none}
 .markdown-content{color:var(--text);font-size:14px;line-height:1.72;
   word-wrap:break-word;overflow-wrap:break-word}
+.md-block{display:block;position:relative;border-radius:8px}
+.md-block[data-page]{cursor:pointer}
+.md-block[data-page]:hover{background:rgba(30,110,232,0.045);
+  box-shadow:-10px 0 0 rgba(30,110,232,0.045),
+    inset 3px 0 0 rgba(30,110,232,0.30)}
 .markdown-content h1,.markdown-content h2,.markdown-content h3,
 .markdown-content h4,.markdown-content h5,.markdown-content h6{
   margin:1.45em 0 0.6em;font-family:var(--font-display);line-height:1.25;color:var(--text)}
@@ -467,14 +818,15 @@ footer{margin-top:auto;padding:0 clamp(16px,3vw,32px) 34px;color:var(--muted)}
 @media(max-width:1024px){
   header{position:relative}
   .page-content{grid-template-columns:1fr}
-  .image-panel{position:static;max-height:480px;max-width:860px;margin:0 auto}
+  .image-col{position:relative;top:auto;height:520px;max-width:860px;margin:0 auto;width:100%}
 }
 @media print{
   body{background:#fff}
   header{position:static;background:#fff;border-bottom:1px solid #ddd}
   .page-section{box-shadow:none;border:1px solid #d8e1ea;background:#fff;page-break-inside:avoid}
   .page-content{grid-template-columns:1fr}
-  .image-panel{position:static;max-height:400px}
+  .image-col{position:static;height:auto;min-height:0}
+  .image-panel{position:static;overflow:visible}
   .btn,.btn-sec,.toolbar-global{display:none!important}
 }'''
 
@@ -483,6 +835,16 @@ footer{margin-top:auto;padding:0 clamp(16px,3vw,32px) 34px;color:var(--muted)}
 # the exported MD must round-trip through the engine's chunker. Keep verbatim.
 _JS = r'''(function(){
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // sticky-left sizing: expose the live header height to CSS so the
+  // image column can fill exactly the viewport space below the header
+  var _hdr = document.querySelector('header');
+  function setHdrH(){
+    document.documentElement.style.setProperty('--hdr-h',
+      (_hdr ? _hdr.offsetHeight : 160) + 'px');
+  }
+  setHdrH();
+  window.addEventListener('resize', setHdrH);
 
   // per-section Edit / Preview toggle
   document.querySelectorAll('.btn-sec[data-act="toggle"]').forEach(function(btn){
@@ -544,7 +906,403 @@ _JS = r'''(function(){
     });
     allEdit.textContent = anyPreview ? 'Preview all' : 'Edit all';
   });
+
+  // ── click-to-sync ─────────────────────────────────────────────
+  // The left image column is sticky (fills the viewport below the
+  // header) and is a NATIVE scroll container — wheel over it scrolls
+  // only the original pages; the right side scrolls with the document.
+  // Clicking a sentence in the rendered MD resolves its exact source
+  // band live (engine line bboxes + on-the-fly text search) and
+  // centers it in the left panel. Double-click the panel: back to top.
+  document.querySelectorAll('.page-section').forEach(function(sec){
+    var panel = sec.querySelector('.image-panel');
+    if (!panel) return;
+    panel.addEventListener('dblclick', function(){
+      animateScrollTo(panel, 0);
+    });
+  });
+
+  function flashAt(panel, band){
+    var track = panel.querySelector('.image-track') || panel;
+    var flash = track.querySelector('.sync-flash');
+    if (!flash){
+      flash = document.createElement('div');
+      flash.className = 'sync-flash';
+      track.appendChild(flash);
+    }
+    flash.style.top = (band.top|0) + 'px';
+    flash.style.height = Math.max(12, band.height|0) + 'px';
+    flash.style.left = (band.left|0) + 'px';
+    flash.style.right = (band.right|0) + 'px';
+    flash.style.marginTop = '0';
+    void flash.offsetWidth;            // reflow so the transition replays
+    flash.classList.add('show');
+    clearTimeout(flash._t);
+    flash._t = setTimeout(function(){ flash.classList.remove('show'); }, 1800);
+  }
+
+  // ── real-time sentence resolution ───────────────────────────
+  // Normalization must mirror the Python side (keep letters/digits/_
+  // and CJK, lowercase) so client offsets line up with engine norms.
+  function normStr(s){
+    try { return s.replace(/[^\p{L}\p{N}_]/gu, '').toLowerCase(); }
+    catch(_){ return s.replace(/[^\w\u4e00-\u9fff]/g, '').toLowerCase(); }
+  }
+  function caretPoint(x, y){
+    if (document.caretRangeFromPoint){
+      var r = document.caretRangeFromPoint(x, y);
+      if (r) return {node: r.startContainer, off: r.startOffset};
+    } else if (document.caretPositionFromPoint){
+      var p = document.caretPositionFromPoint(x, y);
+      if (p) return {node: p.offsetNode, off: p.offset};
+    }
+    return null;
+  }
+  function isSentEnd(t, i){
+    var c = t[i];
+    if ('\u3002\uff0e\uff01\uff1f!?\uff1b;\n'.indexOf(c) >= 0) return true;
+    // '.' ends a sentence only when not inside a number / abbreviation
+    if (c === '.') return i + 1 >= t.length || /\s/.test(t[i + 1]);
+    return false;
+  }
+  // sentence under the click, computed live: char span in the block's
+  // DOM text + normalized offsets + the sentence's own normalized text
+  function sentenceAt(blk, x, y){
+    var pos = caretPoint(x, y);
+    if (!pos || pos.node.nodeType !== 3 || !blk.contains(pos.node)) return null;
+    var w = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT);
+    var nodes = [], full = '', caret = -1, n;
+    while ((n = w.nextNode())){
+      if (n === pos.node) caret = full.length + pos.off;
+      nodes.push({node: n, start: full.length});
+      full += n.textContent;
+    }
+    if (caret < 0) return null;
+    caret = Math.min(caret, full.length);
+    var s = caret, e = caret;
+    while (s > 0 && !isSentEnd(full, s - 1)) s--;
+    while (e < full.length && !isSentEnd(full, e)) e++;
+    if (e < full.length) e++;                  // include the terminator
+    while (s < e && /\s/.test(full[s])) s++;
+    if (e <= s) return null;
+    return {s: s, e: e, full: full, nodes: nodes,
+            n0: normStr(full.slice(0, s)).length,
+            n1: normStr(full.slice(0, e)).length,
+            norm: normStr(full.slice(s, e))};
+  }
+  function sentenceRange(info){
+    function loc(off){
+      for (var i = info.nodes.length - 1; i >= 0; i--){
+        if (info.nodes[i].start <= off){
+          return {node: info.nodes[i].node,
+                  off: Math.min(off - info.nodes[i].start,
+                                info.nodes[i].node.textContent.length)};
+        }
+      }
+      return null;
+    }
+    var a = loc(info.s), b = loc(info.e);
+    if (!a || !b) return null;
+    var r = document.createRange();
+    r.setStart(a.node, a.off);
+    r.setEnd(b.node, b.off);
+    return r;
+  }
+  // flash the matched sentence on the MD side (CSS Custom Highlight API;
+  // silently skipped on browsers without it)
+  function highlightSentence(info){
+    try {
+      if (!(window.Highlight && CSS.highlights)) return;
+      var r = sentenceRange(info);
+      if (!r) return;
+      CSS.highlights.set('sync-sentence', new Highlight(r));
+      clearTimeout(highlightSentence._t);
+      highlightSentence._t = setTimeout(function(){
+        CSS.highlights.delete('sync-sentence');
+      }, 1600);
+    } catch(_){}
+  }
+  function blockLines(blk){
+    if (blk._lines !== undefined) return blk._lines;
+    var raw = blk.dataset.lines;
+    if (!raw){ blk._lines = null; return null; }
+    blk._lines = raw.split(';').map(function(s){
+      var a = s.split(',');
+      return [parseInt(a[0], 10), parseFloat(a[1]), parseFloat(a[2])];
+    });
+    return blk._lines;
+  }
+  function blockLineCat(blk){
+    if (blk._lcat !== undefined) return blk._lcat;
+    blk._lcat = blk.dataset.ltext ? blk.dataset.ltext.split(';').join('') : null;
+    return blk._lcat;
+  }
+  // sentence -> union bbox of the engine lines it covers.
+  // Primary: search the sentence's normalized text inside the
+  // concatenated line norms (occurrence nearest the DOM offset wins) --
+  // stays exact even when MD formatting shifts the offsets; fallback:
+  // the raw cumulative offsets from the line table.
+  function lineBandForRange(blk, info){
+    var lines = blockLines(blk);
+    if (!lines || !lines.length) return null;
+    var n0 = info.n0, n1 = Math.max(info.n1, info.n0 + 1);
+    var cat = blockLineCat(blk);
+    if (cat && info.norm && info.norm.length >= 4){
+      var idx = -1, from = 0, best = -1, bestD = Infinity;
+      while ((idx = cat.indexOf(info.norm, from)) !== -1){
+        var d = Math.abs(idx - info.n0);
+        if (d < bestD){ bestD = d; best = idx; }
+        from = idx + 1;
+      }
+      if (best >= 0){ n0 = best; n1 = best + info.norm.length; }
+    }
+    var li0 = 0, li1 = 0;
+    for (var i = 0; i < lines.length; i++){
+      if (lines[i][0] <= n0) li0 = i;
+      if (lines[i][0] < n1) li1 = i;
+    }
+    if (li1 < li0) li1 = li0;
+    var y0 = lines[li0][1], y1 = lines[li1][2];
+    for (var k = li0; k <= li1; k++){
+      y0 = Math.min(y0, lines[k][1]);
+      y1 = Math.max(y1, lines[k][2]);
+    }
+    return [y0, y1];
+  }
+
+  // eased scroll via rAF — native behavior:'smooth' is unreliable
+  // across embedders. If no frame arrives within 200ms (hidden /
+  // occluded page: rAF is frozen there), jump straight to the target.
+  function animateScrollTo(el, to){
+    var from = el.scrollTop, t0 = null;
+    var D = Math.min(420, 160 + Math.abs(to - from));  // ms
+    if (el._anim) cancelAnimationFrame(el._anim);
+    clearTimeout(el._animFb);
+    function step(ts){
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / D);
+      p = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      el.scrollTop = from + (to - from) * p;
+      el._anim = p < 1 ? requestAnimationFrame(step) : null;
+    }
+    el._anim = requestAnimationFrame(step);
+    el._animFb = setTimeout(function(){
+      if (t0 === null){ cancelAnimationFrame(el._anim); el._anim = null; el.scrollTop = to; }
+    }, 200);
+  }
+  function animateWindowBy(dy){
+    var se = document.scrollingElement || document.documentElement;
+    animateScrollTo(se, se.scrollTop + dy);
+  }
+
+  function syncImageToClick(sec, e){
+    var panel = sec.querySelector('.image-panel');
+    var md = sec.querySelector('.markdown-content');
+    if (!panel || !md) return;
+    if (!panel.querySelector('img')) return;            // nothing to locate to
+
+    var blk = e.target.closest('.md-block');
+    var cell = e.target.closest('td,th');
+    var isTable = blk && blk.classList.contains('md-table');
+    var targetY = null;
+    var band = null;                       // {top,height,left,right} in track px
+
+    if (blk && blk.dataset.page){
+      var img = panel.querySelector('img[data-page="' + blk.dataset.page + '"]');
+      if (img && img.offsetHeight > 0){
+        if (isTable && cell && blk.dataset.yf0){
+          // ── cell-precise: row band inside the table's bbox ──
+          var table = cell.closest('table');
+          var yf0 = parseFloat(blk.dataset.yf0), yf1 = parseFloat(blk.dataset.yf1);
+          var nRows = (table && table.rows.length) || 1;
+          var r = cell.parentNode.rowIndex || 0;
+          var rowH = (yf1 - yf0) / nRows;
+          var yfTop = yf0 + r * rowH;
+          targetY = img.offsetTop + (yfTop + rowH / 2) * img.offsetHeight;
+          band = {top: img.offsetTop + yfTop * img.offsetHeight,
+                  height: rowH * img.offsetHeight, left: 0, right: 0};
+          if (table && table.offsetWidth > 0){
+            var lf = cell.offsetLeft / table.offsetWidth;
+            var rf = (cell.offsetLeft + cell.offsetWidth) / table.offsetWidth;
+            band.left = lf * img.offsetWidth;
+            band.right = (1 - Math.min(1, rf)) * img.offsetWidth;
+          }
+        } else if (isTable && blk.dataset.yf0){
+          // table block, clicked outside a cell -> whole-table band
+          var a0 = parseFloat(blk.dataset.yf0), b0 = parseFloat(blk.dataset.yf1);
+          targetY = img.offsetTop + ((a0 + b0) / 2) * img.offsetHeight;
+          band = {top: img.offsetTop + a0 * img.offsetHeight,
+                  height: (b0 - a0) * img.offsetHeight, left: 0, right: 0};
+        } else if (blk.dataset.yf0){
+          // ── text block: SENTENCE-precise, computed live at click ──
+          // 1) sentence under the click -> exact engine line span,
+          //    matched live against the embedded line texts
+          var info = sentenceAt(blk, e.clientX, e.clientY);
+          if (info){
+            var seg = lineBandForRange(blk, info);
+            if (seg){
+              band = {top: img.offsetTop + seg[0] * img.offsetHeight,
+                      height: Math.max(10, (seg[1] - seg[0]) * img.offsetHeight),
+                      left: 0, right: 0};
+              targetY = band.top + band.height / 2;
+              highlightSentence(info);
+            }
+          }
+          // 2) no line table: offset-proportional inside the block extent
+          if (targetY === null && info){
+            var t0 = parseFloat(blk.dataset.yf0), t1 = parseFloat(blk.dataset.yf1);
+            var tot = normStr(info.full).length || 1;
+            var f0 = Math.min(1, info.n0 / tot);
+            var f1 = Math.min(1, Math.max(info.n1 / tot, f0 + 0.04));
+            band = {top: img.offsetTop + (t0 + f0 * (t1 - t0)) * img.offsetHeight,
+                    height: Math.max(12, (f1 - f0) * (t1 - t0) * img.offsetHeight),
+                    left: 0, right: 0};
+            targetY = band.top + band.height / 2;
+            highlightSentence(info);
+          }
+          // 3) caret missed: geometric interpolation inside the block
+          if (targetY === null){
+            var bRect = blk.getBoundingClientRect();
+            var g0 = parseFloat(blk.dataset.yf0), g1 = parseFloat(blk.dataset.yf1);
+            var fr = bRect.height > 0
+                   ? Math.max(0, Math.min(1, (e.clientY - bRect.top) / bRect.height))
+                   : 0.5;
+            var yfp = g0 + fr * (g1 - g0);
+            targetY = img.offsetTop + yfp * img.offsetHeight;
+            band = {top: targetY - 14, height: 28, left: 0, right: 0};
+          }
+        } else if (blk.dataset.yf){
+          // legacy: block center only
+          var yfc = parseFloat(blk.dataset.yf);
+          targetY = img.offsetTop + yfc * img.offsetHeight;
+          band = {top: targetY - 22, height: 44, left: 0, right: 0};
+        }
+      }
+    }
+    // fallback: proportional mapping through the page TRACK
+    if (targetY === null){
+      var mdRect = md.getBoundingClientRect();
+      if (mdRect.height <= 0) return;
+      var track0 = sec.querySelector('.image-track');
+      if (!track0) return;
+      var f = (e.clientY - mdRect.top) / mdRect.height;
+      f = Math.max(0, Math.min(1, f));
+      targetY = f * track0.offsetHeight;
+      band = {top: targetY - 22, height: 44, left: 0, right: 0};
+    }
+
+    // keep the whole left viewer on screen: near the section's top or
+    // bottom the sticky column gets pushed out by the section edge, so
+    // a click at the bottom of the MD would locate into an off-screen
+    // panel — scroll the window back to the pinned position first
+    // (the clicked sentence stays visible: it lives in the section's
+    // last/first panel-height of content)
+    var col = sec.querySelector('.image-col');
+    if (col && getComputedStyle(col).position === 'sticky'){
+      var pin = parseFloat(getComputedStyle(col).top) || 0;
+      var dy = col.getBoundingClientRect().top - pin;
+      if (Math.abs(dy) > 1) animateWindowBy(dy);
+    }
+    // scroll the left panel so the target band is centered in view
+    animateScrollTo(panel,
+      Math.max(0, band.top + band.height / 2 - panel.clientHeight / 2));
+    flashAt(panel, band);
+  }
+
+  document.querySelectorAll('.page-section').forEach(function(sec){
+    var md = sec.querySelector('.markdown-content');
+    if (!md) return;
+    md.addEventListener('click', function(e){
+      if (e.target.closest('a')) return;               // keep links clickable
+      var selLen = window.getSelection ? String(window.getSelection()).length : 0;
+      if (selLen > 0) return;                          // don't fire on text-select
+      syncImageToClick(sec, e);
+    });
+  });
 })();'''
+
+
+# ==============================================================================
+# Render-source resolution
+# ------------------------------------------------------------------------------
+# The pipeline may hand us MinerU's image-only PDF, but the ORIGINAL input PDF
+# usually has a text layer — rendering that instead makes the left panel both
+# sharper and self-anchoring (PyMuPDF text blocks work, no middle.json needed).
+# Resolution order: explicit --source-pdf > given PDF if it has text > a
+# discovered sibling original (text layer + same page count) > given PDF.
+# ==============================================================================
+
+def _open_pdf_meta(p: Path):
+    """Return (page_count, has_text) or None if unopenable."""
+    import fitz
+    try:
+        d = fitz.open(str(p))
+    except Exception:
+        return None
+    try:
+        n = d.page_count
+        has_text = any(d[i].get_text().strip()
+                       for i in range(min(3, n)))
+        return n, has_text
+    finally:
+        d.close()
+
+
+_VIS_PDF_RE = re.compile(r"(_layout|_span|_spans|_model)\.pdf$", re.IGNORECASE)
+
+
+def find_original_pdf(given: Path, page_count: int) -> Path | None:
+    """Search near the given PDF for the original (text-layer) document."""
+    cands: list[Path] = []
+    seen = {given.resolve()}
+    for root in (given.parent, given.parent.parent):
+        if not root or not root.exists():
+            continue
+        for pat in ("*.pdf", "*/*.pdf"):
+            for c in root.glob(pat):
+                r = c.resolve()
+                if r in seen or _VIS_PDF_RE.search(c.name):
+                    continue
+                seen.add(r); cands.append(c)
+    best, best_score = None, 0.0
+    for c in cands[:40]:                       # bound the probing work
+        meta = _open_pdf_meta(c)
+        if not meta:
+            continue
+        n, has_text = meta
+        if not has_text or n != page_count:    # must be同一文档且有文字层
+            continue
+        s = 10.0
+        if "origin" in c.stem.lower():
+            s += 3.0
+        s += SequenceMatcher(None, c.stem.lower(), given.stem.lower()).ratio() * 5
+        if s > best_score:
+            best_score, best = s, c
+    return best
+
+
+def resolve_render_pdf(given: Path, source_pdf=None) -> Path:
+    if source_pdf:
+        sp = Path(source_pdf)
+        if sp.exists():
+            print(f"[compare] left panel source (explicit): {sp}")
+            return sp
+        print(f"[compare] ⚠️  --source-pdf not found: {sp} — using given PDF")
+        return given
+    meta = _open_pdf_meta(given)
+    if meta is None:
+        return given
+    n, has_text = meta
+    if has_text:
+        return given
+    alt = find_original_pdf(given, n)
+    if alt:
+        print(f"[compare] given PDF has no text layer (image-only); "
+              f"switching left panel to original: {alt}")
+        return alt
+    print("[compare] given PDF has no text layer and no original found nearby "
+          "— pass the original via --source-pdf for precise anchoring")
+    return given
 
 
 # ==============================================================================
@@ -559,6 +1317,88 @@ def _esc_attr(t: str) -> str:
     return html.escape(str(t), quote=True)
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def build_block_panels(sections: list[dict], pdf_path: Path, md_path: Path,
+                       anchors_path=None) -> None:
+    """Render each section block-by-block, tagging blocks with PDF positions.
+    Tables get data-yf0/data-yf1 (full vertical extent -> JS computes the
+    clicked cell's row band inside it); text gets data-yf (block center)."""
+    import fitz
+    engine, src = load_engine_anchors(md_path, pdf_path.stem, anchors_path)
+    if engine:
+        print(f"[compare] anchors: engine coordinates <- {src}")
+    else:
+        print("[compare] anchors: no engine JSON found "
+              f"({'unreadable: ' + str(src) if src else 'searched next to MD'})"
+              " — falling back to PDF text layer")
+    doc = fitz.open(str(pdf_path))
+    try:
+        n_blk = n_anc = n_tbl = n_tbl_anc = 0
+        for sec in sections:
+            blocks = list(iter_md_blocks(sec["md_inlined"]))
+            md_meta = [{"norm": _norm_text(
+                            _TAG_RE.sub(" ", _DATAURI_RE.sub("", b))),
+                        "table": _is_md_table(b)} for b in blocks]
+            lo = sec["start"] if sec["marker"] else 1
+            hi = sec["end"] if sec["marker"] else doc.page_count
+            if engine:
+                anchors = [a for a in engine if lo <= a["page"] <= hi]
+            else:
+                anchors = pdf_block_anchors(doc, lo, hi)
+            mapped = align_section_blocks(md_meta, anchors)
+
+            parts: list[str] = []
+            for b, meta, m in zip(blocks, md_meta, mapped):
+                frag = md_to_html_fragment(b)
+                if not frag.strip():
+                    continue
+                n_blk += 1
+                if meta["table"]:
+                    n_tbl += 1
+                if m and meta["table"]:
+                    n_anc += 1; n_tbl_anc += 1
+                    parts.append(
+                        f'<div class="md-block md-table" data-page="{m["page"]}" '
+                        f'data-yf0="{m["yf0"]:.4f}" data-yf1="{m["yf1"]:.4f}">'
+                        f'{frag}</div>')
+                elif m:
+                    n_anc += 1
+                    yf = (m["yf0"] + m["yf1"]) / 2.0
+                    attrs = (f' data-page="{m["page"]}" data-yf="{yf:.4f}"'
+                             f' data-yf0="{m["yf0"]:.4f}"'
+                             f' data-yf1="{m["yf1"]:.4f}"')
+                    lines = m.get("lines")
+                    if lines:
+                        # data-lines: cumulative norm offset + line bbox;
+                        # data-ltext: the norm text itself (word chars only,
+                        # so ';' is a safe separator) -> lets the JS locate a
+                        # clicked sentence by live text search, not offsets
+                        cum, lparts, tparts = 0, [], []
+                        for ln in lines:
+                            lparts.append(
+                                f"{cum},{ln['yf0']:.4f},{ln['yf1']:.4f}")
+                            tparts.append(ln["norm"])
+                            cum += len(ln["norm"])
+                        attrs += f' data-lines="{";".join(lparts)}"'
+                        attrs += f' data-ltext="{_esc_attr(";".join(tparts))}"'
+                    parts.append(f'<div class="md-block"{attrs}>{frag}</div>')
+                else:
+                    parts.append(f'<div class="md-block">{frag}</div>')
+            sec["panel_html"] = "\n".join(parts) or (
+                '<div class="image-missing">No recognized content in this '
+                'section</div>')
+        print(f"[compare] anchored {n_anc}/{n_blk} blocks "
+              f"(tables {n_tbl_anc}/{n_tbl})")
+        if n_blk and n_anc == 0:
+            print("[compare] ⚠️  NOTHING anchored — clicks will use the rough "
+                  "proportional fallback. If the PDF is scanned, pass the "
+                  "MinerU output explicitly:  --anchors path\\to\\*_middle.json")
+    finally:
+        doc.close()
+
+
 def _section_html(idx: int, sec: dict, page_urls: list[str]) -> str:
     start, end = sec["start"], sec["end"]
     label = f"Pages {start} – {end}" if sec["marker"] else "Full document"
@@ -567,13 +1407,13 @@ def _section_html(idx: int, sec: dict, page_urls: list[str]) -> str:
     for pno in range(start, end + 1):
         if 1 <= pno <= len(page_urls):
             imgs.append(
-                f'<div class="page-no">P{pno}</div>'
+                f'<figure class="page-unit"><div class="page-no">P{pno}</div>'
                 f'<img src="{page_urls[pno - 1]}" alt="page {pno}" '
-                f'loading="lazy" decoding="async"/>'
+                f'data-page="{pno}" loading="lazy" decoding="async"/></figure>'
             )
     img_html = "".join(imgs) or '<div class="image-missing">No page images</div>'
 
-    rendered = md_to_html_fragment(sec["md_inlined"])
+    rendered = sec.get("panel_html") or md_to_html_fragment(sec["md_inlined"])
     if not rendered.strip():
         rendered = '<div class="image-missing">No recognized content in this section</div>'
 
@@ -590,7 +1430,9 @@ def _section_html(idx: int, sec: dict, page_urls: list[str]) -> str:
     </span>
   </div>
   <div class="page-content">
-    <div class="image-panel">{img_html}</div>
+    <div class="image-col">
+      <div class="image-panel"><div class="image-track">{img_html}</div></div>
+    </div>
     <div class="markdown-panel">
       <div class="markdown-content">{rendered}</div>
       <textarea class="md-source" spellcheck="false">{_esc(raw)}</textarea>
@@ -607,6 +1449,8 @@ def build_compare_html(
     dpi: int = 96,
     quality: int = 70,
     title: str = "",
+    anchors: str | Path | None = None,
+    source_pdf: str | Path | None = None,
 ) -> Path:
     """Generate the comparison HTML; returns the output path."""
     pdf_path = Path(pdf_path)
@@ -614,10 +1458,12 @@ def build_compare_html(
     out_path = Path(output_html)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    render_pdf = resolve_render_pdf(pdf_path, source_pdf)
+
     md_text = md_path.read_text(encoding="utf-8-sig", errors="replace")
 
-    print(f"[compare] rendering PDF pages (dpi={dpi}): {pdf_path.name}")
-    page_urls = render_pdf_pages(pdf_path, dpi=dpi, quality=quality)
+    print(f"[compare] rendering PDF pages (dpi={dpi}): {render_pdf.name}")
+    page_urls = render_pdf_pages(render_pdf, dpi=dpi, quality=quality)
     total = len(page_urls)
     print(f"[compare] {total} pages")
 
@@ -626,6 +1472,9 @@ def build_compare_html(
 
     for sec in sections:
         sec["md_inlined"] = inline_md_images(sec["md"], md_path)
+
+    print("[compare] building block-level anchors")
+    build_block_panels(sections, render_pdf, md_path, anchors)
 
     sec_html = "\n".join(
         _section_html(i, s, page_urls) for i, s in enumerate(sections)
@@ -664,7 +1513,9 @@ def build_compare_html(
         <button class="btn btn-primary" id="btn-download-md" type="button"
                 data-filename="{_esc_attr(dl_name)}">Download proofread MD</button>
         <span class="edit-hint">Click "Edit" on any section to fix the recognized
-          text, then export the merged result here</span>
+          text, then export the merged result here · Click any sentence on the
+          right to locate &amp; flash it on the original page; the left pane
+          scrolls on its own — double-click it to jump back to top</span>
       </div>
     </div>
   </header>
@@ -701,12 +1552,20 @@ if __name__ == "__main__":
                      "PDF with the recognized Markdown — proofread in the browser "
                      "and export the corrected MD."))
     ap.add_argument("pdf", help="original PDF path")
-    ap.add_argument("md", help="recognized MD path (*_提取结果.md)")
+    ap.add_argument("md", help="recognized MD path (*_extracted.md)")
     ap.add_argument("output", help="output HTML path")
     ap.add_argument("--dpi", type=int, default=96, help="page render DPI (default 96)")
     ap.add_argument("--quality", type=int, default=70, help="JPEG quality (default 70)")
     ap.add_argument("--title", default="", help="page title")
+    ap.add_argument("--anchors", default=None,
+                    help="MinerU middle.json / content_list.json for precise "
+                         "click positioning (auto-discovered next to the MD "
+                         "if omitted)")
+    ap.add_argument("--source-pdf", default=None,
+                    help="original (text-layer) PDF to render on the left; "
+                         "auto-discovered if the given PDF is image-only")
     args = ap.parse_args()
 
     build_compare_html(args.pdf, args.md, args.output,
-                       dpi=args.dpi, quality=args.quality, title=args.title)
+                       dpi=args.dpi, quality=args.quality, title=args.title,
+                       anchors=args.anchors, source_pdf=args.source_pdf)

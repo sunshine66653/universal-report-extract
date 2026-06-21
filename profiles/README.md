@@ -27,6 +27,29 @@ Maintainers typically only need to modify three major parts:
 
 > 💡 **Tip:** After updating `rules.xlsx`, you can run the engine directly. The engine automatically detects Excel changes and re-generates `rules.json` (idempotent caching; reuses the existing file if no changes are detected).
 
+### The Excel is the ONLY hand-maintained surface
+
+`rules.xlsx` is the single source of truth; `rules.json` is its compiled
+cache (`_sig` = Excel signature) — never edit the JSON by hand.
+
+Distribution without Excel works automatically: if the skill is uploaded
+with only `rules.json` (some upload channels strip `.xlsx`), the first run
+of feature 2 (`extract_metrics.py`) — or `python -m engine.cli rules
+<profile>` — detects the missing Excel and **regenerates a hand-editable
+`rules.xlsx` from the JSON** at the profile's `rules_file` path (the
+conversion round-trips losslessly). From then on the normal loop applies:
+edit the Excel, run the engine, the JSON resyncs on its own.
+
+After editing, you can lint the rules:
+
+```bash
+python -m engine.cli check cn_securities        # or a direct path:
+python -m engine.cli check path/to/rules.xlsx
+```
+
+It flags duplicate/missing ids, missing names, list/boolean fields of the
+wrong type, and `calc` mode without a formula.
+
 ---
 
 ## rules.xlsx Column Specifications
@@ -52,6 +75,7 @@ Maintainers typically only need to modify three major parts:
 
 * Available in `global.txt`: `{report_period_hint}`, `{language}`
 * Available in `chunk.txt`: `{global_prompt}`, `{rule_id}`, `{rule_name}`, `{rule_source}`, `{extraction_mode}`, `{company_instruction}`, `{calc_instruction}`, `{extra_instruction}`, `{report_period_hint}`, `{context}`
+* Available in `whole.txt` (optional, used only by `--mode whole`): `{global_prompt}`, `{rules_block}` (the full metric list), `{report_period_hint}`, `{context}` (the document window). If absent, a built-in Chinese template is used.
 
 > ⚠️ **Note:** Missing placeholders will be retained as raw text without raising errors. If you need literal curly braces `{}` to appear in your output (e.g., in a JSON format example), they must be escaped as `{{` and `}}`.
 
@@ -65,12 +89,16 @@ Maintainers typically only need to modify three major parts:
   "report_period_hint": "FY2024",   // Description of the "latest reporting period" in prompts.
   "chunking": {
     "strategy": "heading",          // Options: "auto" / "cn_slice" / "heading" / "fixed"
-    "max_chars": 5000               // Maximum characters per text chunk.
+    "max_chars": 5000,              // Maximum characters per text chunk.
+    "promote_headings": true,       // Promote plain-text numbered titles (一、/（一）/1.1) to headings before chunking (default true).
+    "max_heading_chars": 0          // Promotion length guard (0 -> 40 zh / 90 en) to skip long sentences.
   },
   "retrieval": { "topk": 14 },      // Number of context chunks fed to the LLM per metric.
   "convert": {
     "engine": "mineru",             // "docling" (Local) / "mineru" (Cloud API)
-    "rotate_detect": false,         // Text orientation detection (Only applicable for docling + zh).
+    "rotate_detect": false,         // Turn rotated landscape pages upright before OCR (zh only).
+    "rotate_min_vertical_ratio": 0.85, // Rotate a page only when vertical text is >= this share — guards readable pages (org charts, vertical column headers) from being wrongly flipped.
+    "rotate_osd": false,            // Optional Tesseract OSD visual second-check on rotation candidates (needs pytesseract + tesseract binary; falls back to the heuristic if unavailable).
     "mineru_token": "",             // MinerU API Token (Can also be set via MINERU_TOKEN env var or UI).
     "mineru_model_version": "vlm",
     "recognize_images": true        // Uses Vision-Language (VL) models to recognize images in-place for MinerU results.

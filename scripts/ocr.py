@@ -4,9 +4,9 @@ Feature 1 — Pure OCR (no metric rules involved)
 Recognize a document (or a whole folder, nested subfolders included) and
 produce four outputs per file:
 
-  1. <stem>_提取结果.md     recognized Markdown (HTML tables preserved)
-                            (the Chinese suffix is the engine's fixed wire
-                            format — downstream tools discover MDs by it)
+  1. <stem>_extracted.md    recognized Markdown (HTML tables preserved)
+                            (engine.mineru.RECOGNIZED_MD_SUFFIX — downstream
+                            tools discover MDs by it)
   2. <stem>_recognized.docx recognition converted to Word
   3. <stem>_compare.html    original vs recognition side-by-side proofreading
                             report (editable, exports corrected MD)
@@ -64,7 +64,11 @@ def make_ocr_profile(language: str = "zh",
                      engine: str = "mineru",
                      mineru_token: str = "",
                      vl_model: str = "",
-                     recognize_images: bool = True):
+                     recognize_images: bool = True,
+                     rotate_detect: bool = True,
+                     rotate_min_vertical_ratio: float = 0.85,
+                     rotate_osd: bool = False,
+                     docling_table_rebuild: bool = True):
     """
     Build an in-memory profile carrying only what PDF->MD needs (language,
     convert config, VL model for figure recognition). It is decoupled from
@@ -80,6 +84,10 @@ def make_ocr_profile(language: str = "zh",
             "engine": engine,
             "mineru_token": mineru_token,
             "recognize_images": recognize_images,
+            "rotate_detect": rotate_detect,
+            "rotate_min_vertical_ratio": rotate_min_vertical_ratio,
+            "rotate_osd": rotate_osd,
+            "docling_table_rebuild": docling_table_rebuild,
         },
     }
     if vl_model:
@@ -108,6 +116,8 @@ def scan_folder(root: str | Path, recursive: bool = True) -> list[Path]:
             continue
         if p.name.endswith("_asimg.pdf"):
             continue
+        if p.name.endswith("_rotated_ready.pdf"):   # orientation pre-pass temp
+            continue
         if any(part.endswith("_mineru") for part in p.parent.parts):
             continue
         files.append(p)
@@ -133,7 +143,7 @@ def ensure_pdf(path: Path) -> Path:
 def ensure_md(pdf_path: Path, profile, api_key: str = "",
               log: Callable[[str], None] = print) -> Path:
     """PDF -> recognized MD via the engine (idempotent: an existing non-empty
-    <stem>_提取结果.md is reused). Returns the MD path."""
+    <stem>_extracted.md is reused). Returns the MD path."""
     from engine.convert import pdf_to_md
     md = pdf_to_md(str(pdf_path), profile, api_key=api_key, log=log)
     return Path(md)
@@ -206,8 +216,11 @@ def main(argv=None):
                      "HTML + tables Excel. No metric rules are involved — use "
                      "extract_metrics.py for that."))
     ap.add_argument("input", help="a PDF/image file, or a folder to batch-process")
-    ap.add_argument("--engine", default="mineru", choices=["mineru", "docling"],
-                    help="parsing engine (default: cloud mineru)")
+    ap.add_argument("--engine", default="mineru",
+                    choices=["mineru", "docling", "fast"],
+                    help="parsing engine: mineru (cloud), docling (local ML), "
+                         "or fast (local coordinate-only, digital-born PDFs; "
+                         "no ML/GPU, ~ms/page)")
     ap.add_argument("--language", default="zh", choices=["zh", "en"],
                     help="document language (drives parsing + heading levels)")
     ap.add_argument("--mineru-token", default=os.getenv("MINERU_TOKEN", ""),
@@ -217,6 +230,18 @@ def main(argv=None):
                          "during parsing (charts -> data tables)")
     ap.add_argument("--vl-model", default="",
                     help="vision model for figure recognition (default from engine)")
+    ap.add_argument("--no-rotate-detect", action="store_true",
+                    help="skip the landscape-table pre-pass (rotated pages are "
+                         "detected via the text layer and turned upright before "
+                         "parsing; zh documents only, on by default)")
+    ap.add_argument("--rotate-osd", action="store_true",
+                    help="add a Tesseract OSD visual second-check on rotation "
+                         "candidates (needs pytesseract + the tesseract binary; "
+                         "falls back to the heuristic if unavailable)")
+    ap.add_argument("--no-table-rebuild", action="store_true",
+                    help="docling engine: use the RAW/original TableFormer "
+                         "table output instead of the header-anchored "
+                         "coordinate rebuild (rebuild is on by default)")
     ap.add_argument("--out", default="",
                     help="output dir for docx/html/xlsx (default: next to each "
                          "source file; batch mode mirrors the folder structure)")
@@ -241,6 +266,9 @@ def main(argv=None):
     profile = make_ocr_profile(
         language=args.language, engine=args.engine,
         mineru_token=args.mineru_token, vl_model=args.vl_model,
+        rotate_detect=not args.no_rotate_detect,
+        rotate_osd=args.rotate_osd,
+        docling_table_rebuild=not args.no_table_rebuild,
     )
     out_root = Path(args.out) if args.out else None
 

@@ -21,7 +21,8 @@ profile.json fields (all optional; defaults in DEFAULT_PROFILE):
   "llm": { "text_model": "qwen-plus", "vl_model": "qwen-vl-max",
            "temperature": 0.0, "base_url": "...", "max_chars_context": 32000 },
   "chunking": { "strategy": "auto", "max_chars": 4500,
-                "slice_marker_regex": "...", "heading_levels": 6 },
+                "slice_marker_regex": "...", "heading_levels": 6,
+                "promote_headings": true, "max_heading_chars": 0 },
   "retrieval": { "topk": 12,
                  "weights": {"alias":4.0,"section_base":3.0,"text_base":2.0,
                              "step":1.0,"company":10.0,"table":1.0} },
@@ -65,6 +66,8 @@ DEFAULT_PROFILE: Dict[str, Any] = {
         "slice_marker_regex":
             r"^\s*#\s*---\s*PDF\s*物理切片\s*[:：]\s*第\s*(\d+)\s*-\s*(\d+)\s*页\s*---\s*$",
         "heading_levels": 6,
+        "promote_headings": True,      # promote plain numbered titles -> headings before chunking
+        "max_heading_chars": 0,        # promotion length guard (0 -> 40 zh / 90 en)
     },
     "retrieval": {
         "topk": 12,
@@ -81,7 +84,10 @@ DEFAULT_PROFILE: Dict[str, Any] = {
     },
     "convert": {
         "engine": "docling",           # docling (local) / mineru (cloud API)
-        "rotate_detect": True,         # docling+zh only: detect text orientation
+        "rotate_detect": True,         # zh only: turn rotated landscape pages upright before OCR
+        "rotate_min_vertical_ratio": 0.85,  # only rotate when vertical text is this share of the page (guards readable pages with vertical labels)
+        "rotate_osd": False,           # optional Tesseract OSD visual second-check (needs pytesseract+tesseract; falls back to heuristic if absent)
+        "docling_table_rebuild": True, # docling: replace TableFormer tables with the header-anchored coordinate rebuild (False = raw/original TableFormer output)
         "mineru_token": "",            # MinerU API token (or env MINERU_TOKEN)
         "mineru_model_version": "vlm",
         "recognize_images": True,      # run VL figure recognition on MinerU output
@@ -112,6 +118,7 @@ class Profile:
     config: Dict[str, Any]
     global_prompt: str
     chunk_prompt: str
+    whole_prompt: str = ""
     _rules_cache: Optional[List[Dict[str, Any]]] = field(default=None, repr=False)
 
     # ── convenience accessors ─────────────────────────────────────
@@ -141,6 +148,32 @@ class Profile:
 
     def rules_path(self) -> Path:
         return self.dir / self.config.get("rules_file", "rules/rules.xlsx")
+
+    def ensure_rules_excel(self) -> Optional[Path]:
+        """The Excel is the only hand-maintained rule surface. If the profile
+        currently ships only a rules JSON (e.g. the skill was uploaded
+        without .xlsx files), materialize a hand-editable Excel from it at
+        the profile's rules_file path. From then on the normal flow applies:
+        edit the Excel -> the JSON cache resyncs automatically on each run.
+        Returns the xlsx path (existing or generated), or None if the
+        profile has no rules at all."""
+        rp = self.rules_path()
+        if rp.suffix.lower() not in (".xlsx", ".xlsm"):
+            return rp if rp.exists() else None   # profile opted into raw JSON
+        if rp.exists():
+            return rp
+        jp = rp.with_suffix(".json")
+        if not jp.exists():
+            cands = list((self.dir / "rules").glob("*.json"))
+            if not cands:
+                return None
+            jp = cands[0]
+        from engine.rules_excel import load_rules_raw, rules_to_excel
+        rules_to_excel(load_rules_raw(jp), rp)
+        print(f"[rules] no hand-editable Excel found — generated {rp.name} "
+              f"from {jp.name}; maintain rules there from now on (Excel "
+              f"edits sync back to JSON automatically)")
+        return rp
 
     def load_rules(self, force_convert: bool = False) -> List[Dict[str, Any]]:
         if self._rules_cache is not None and not force_convert:
@@ -176,10 +209,12 @@ def load_profile(name: str) -> Profile:
 
     global_prompt = _read(pdir / "prompts" / "global.txt")
     chunk_prompt = _read(pdir / "prompts" / "chunk.txt")
+    whole_prompt = _read(pdir / "prompts" / "whole.txt")
 
     return Profile(
         name=name, dir=pdir, config=config,
         global_prompt=global_prompt, chunk_prompt=chunk_prompt,
+        whole_prompt=whole_prompt,
     )
 
 

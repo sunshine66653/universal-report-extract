@@ -67,6 +67,33 @@ _DEFAULT_CHUNK = """{global_prompt}
 {context}
 """
 
+# whole-document mode: one prompt, all metrics at once, no per-rule retrieval
+# (section_hint is intentionally NOT included — the model sees the full text)
+_DEFAULT_WHOLE = """{global_prompt}
+下面给你一份报告全文（或其中一段），以及一批需要抽取的指标清单。
+请通读全文，为清单里的【每一个】指标抽取数值，一次性输出。
+
+抽取要求：
+1. 按每个指标的 name / source 描述在全文中定位。
+2. 若出现多个年度，只提取{report_period_hint}对应数据。
+3. 保持原单位，不要换算。如果货币不是人民币，unit请返回这种形式：如"港币亿元"、"美元万元"。
+4. 除source明确要求不保留负号外，负数请保留负号（括号表示的负数请转换为带负号的数字）。
+5. 本段未出现的指标，value 与 unit 返回 null，不要猜测，也不要遗漏该 id。
+
+指标清单：
+{rules_block}
+
+输出必须是 JSON 对象，results 数组按清单顺序给出每个指标：
+{{
+  "results": [
+    {{"id": "指标id", "value": "数值或null", "unit": "单位或null", "source_text": "原文片段或null"}}
+  ]
+}}
+
+报告内容：
+{context}
+"""
+
 
 class _SafeDict(dict):
     """For str.format_map: unknown keys stay as literal {key}."""
@@ -122,5 +149,40 @@ def build_extract_prompt(
         "extra_instruction": extra_instr,
         "report_period_hint": profile.config.get("report_period_hint", ""),
         "context": context,
+    }
+    return _render(tpl, mapping)
+
+
+def _rules_block(rules: List[Dict[str, Any]]) -> str:
+    """Compact one-line-per-metric listing for the whole-document prompt."""
+    lines = []
+    for r in rules:
+        src = (r.get("source") or "").replace("\n", " ").strip()
+        line = f"- id: {r.get('id')} | name: {r.get('name')}"
+        if src:
+            line += f" | source: {src}"
+        calc = r.get("calc")
+        if calc:
+            line += f" | calc: {json.dumps(calc, ensure_ascii=False)}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def build_whole_prompt(
+    profile,
+    rules: List[Dict[str, Any]],
+    doc_text: str,
+) -> str:
+    """Whole-document prompt: the full text (one window of it) plus the
+    complete metric list, asking for all values in a single array. Bypasses
+    per-rule retrieval and section_hint entirely. The chunk.txt template is
+    NOT used here; a profile may override via prompts/whole.txt."""
+    max_ctx = int(profile.llm.get("max_chars_context", 32000))
+    tpl = getattr(profile, "whole_prompt", "") or _DEFAULT_WHOLE
+    mapping = {
+        "global_prompt": render_global_prompt(profile),
+        "report_period_hint": profile.config.get("report_period_hint", ""),
+        "rules_block": _rules_block(rules),
+        "context": (doc_text or "")[:max_ctx],
     }
     return _render(tpl, mapping)

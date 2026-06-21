@@ -33,6 +33,11 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import requests
 
+# Filename suffix the engine appends to recognition output:
+# "<stem>_extracted.md". Single source of truth — convert.py / pipeline.py
+# import this so the suffix never drifts across modules.
+RECOGNIZED_MD_SUFFIX = "_extracted"
+
 MINERU_BASE = os.getenv("MINERU_BASE", "https://mineru.net")
 PAGE_LIMIT = 200
 
@@ -273,9 +278,8 @@ def collect_image_roots(md_path: Path,
     Priority: explicit root > sibling *_mineru work dirs (incl. all result_*
     subdirs) > the md's own directory.
 
-    NOTE: "_提取结果" below is the fixed Chinese filename suffix the engine
-    appends to recognition output ("<stem>_提取结果.md"). It is a wire format —
-    do not translate.
+    The recognition-output suffix (RECOGNIZED_MD_SUFFIX) is stripped to find
+    the matching "<stem>_mineru" work dir.
     """
     roots: List[Path] = []
 
@@ -289,7 +293,7 @@ def collect_image_roots(md_path: Path,
     for wd in sorted(md_dir.glob("*_mineru")):
         _add(wd)
     # work dir named after the md stem (minus the output suffix)
-    stem = md_path.stem.replace("_提取结果", "")
+    stem = md_path.stem.replace(RECOGNIZED_MD_SUFFIX, "")
     _add(md_dir / f"{stem}_mineru")
     _add(md_dir)
     return roots

@@ -51,9 +51,20 @@ def main(argv=None):
 
     sub.add_parser("list", help="list all profiles")
 
-    p_rules = sub.add_parser("rules", help="convert a profile's Excel rules to JSON")
+    p_rules = sub.add_parser(
+        "rules",
+        help="refresh a profile's rules.json from its Excel; if the profile "
+             "has no Excel (json-only distribution), a hand-editable one is "
+             "generated from the json first")
     p_rules.add_argument("profile")
     p_rules.add_argument("--force", action="store_true", help="force re-conversion")
+
+    p_check = sub.add_parser(
+        "check",
+        help="validate rules (duplicate/missing ids, bad field types, ...) — "
+             "run this after hand-editing a rules.json")
+    p_check.add_argument("target",
+                         help="profile name, or a path to a rules .json/.xlsx")
 
     p_run = sub.add_parser("run", help="run the pipeline")
     p_run.add_argument("profile")
@@ -80,9 +91,37 @@ def main(argv=None):
     if args.cmd == "rules":
         from engine.profile import load_profile
         p = load_profile(args.profile)
+        p.ensure_rules_excel()
         rules = p.load_rules(force_convert=args.force)
         print(f"{args.profile}: {len(rules)} enabled rules -> "
               f"{p.rules_path().with_suffix('.json')}")
+        return
+
+    if args.cmd == "check":
+        from engine.rules_excel import load_rules_raw, validate_rules
+        target = Path(args.target)
+        if not target.exists():
+            from engine.profile import load_profile
+            p = load_profile(args.target)
+            target = p.rules_path()
+            if not target.exists():
+                cands = (list((p.dir / "rules").glob("*.xlsx"))
+                         + list((p.dir / "rules").glob("*.json")))
+                if not cands:
+                    print(f"Error: profile '{args.target}' has no rules file")
+                    sys.exit(1)
+                target = cands[0]
+        rules = load_rules_raw(target)
+        problems = validate_rules(rules)
+        n_on = sum(1 for r in rules
+                   if isinstance(r, dict) and r.get("enabled", True))
+        print(f"{target}: {len(rules)} rules ({n_on} enabled)")
+        if problems:
+            for msg in problems:
+                print(f"  ✗ {msg}")
+            print(f"\n{len(problems)} problem(s) found.")
+            sys.exit(1)
+        print("  ✓ no problems found")
         return
 
     if args.cmd == "run":

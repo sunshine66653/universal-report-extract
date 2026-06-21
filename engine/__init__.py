@@ -14,6 +14,9 @@ Modules:
     llm          LLM calls (OpenAI-compatible) + robust JSON parsing
     extract      per-metric extraction + concurrency + Excel output
     convert      PDF->MD (MinerU cloud / optional local Docling)
+    table_reconstruct  coordinate table rebuild for digital-born PDFs
+                 (data-driven right-edge columns -> header-gap -> TableFormer;
+                 used by the fast engine and the docling post-processor)
     download     download adapters (cninfo; A-share / H-share editions)
     pipeline     top-level run_profile()
 """

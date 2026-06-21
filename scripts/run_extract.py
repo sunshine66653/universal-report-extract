@@ -2,7 +2,7 @@
 通用报表提取 — 一键四输出
 ─────────────────────────────────────────────────────────────────
 输入一个 PDF（或已识别的 MD），产出：
-  1. <stem>_提取结果.md          识别 Markdown（HTML 表格保留）
+  1. <stem>_extracted.md         识别 Markdown（HTML 表格保留）
   2. <stem>_对照.html            原文 vs 识别结果左右对照（可在线校对、导出修改后 MD）
   3. <stem>_识别结果.docx        识别内容转 Word
   4. <stem>_指标.xlsx            按 profile 规则抽取的指标表（需 API Key）

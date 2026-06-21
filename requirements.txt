@@ -11,3 +11,6 @@ markdown2>=2.4.0
 python-docx>=1.1.0
 # 可选：本地 Docling 解析（重依赖，默认走云端 MinerU 不需要）
 # docling>=2.0.0
+# 可选：旋转预处理的 Tesseract OSD 视觉二次验证（--rotate-osd 时才用；
+# 还需另装 tesseract 二进制。不装则自动回退到文字方向启发式）
+# pytesseract>=0.3.10

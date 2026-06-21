@@ -116,32 +116,54 @@ def _en_level(text: str) -> int:
     return 0
 
 
-def relevel_markdown(md_text: str, language: str = "zh") -> str:
+def relevel_markdown(md_text: str, language: str = "zh",
+                     promote_plain: bool = False,
+                     max_heading_chars: int = 0) -> str:
     """
     Re-level all heading lines by language.
     - headings matching a numbering rule -> that rule's level (# .. ####)
     - headings matching nothing -> demoted to ## (stay headings, but never
       compete with level-1 sections)
     - physical slice markers "# --- ... ---" pass through untouched
+
+    promote_plain: when True, ALSO promote plain-text lines that match a
+        numbering rule (一、 / （一） / 1.1 / "Note 5" ...) into headings.
+        MinerU frequently emits section titles as plain paragraphs rather
+        than '#' lines, which leaves chunking with no section_path and makes
+        rule section_hint matching fail. A length guard (max_heading_chars)
+        skips long declarative sentences that merely start with a number
+        (e.g. "一、本公司董事会...保证...完整"). OFF by default so feature-1
+        recognition output stays faithful; the extraction path turns it on.
+    max_heading_chars: promotion length cap (0 -> 40 for zh, 90 for en).
     """
     out: List[str] = []
     slice_marker = re.compile(r"^\s*#\s*---.*---\s*$")
+    level_fn = _en_level if language == "en" else _cn_level
+    cap = max_heading_chars or (40 if language != "en" else 90)
 
     for line in md_text.splitlines():
         if slice_marker.match(line):
             out.append(line)
             continue
         is_h, text, raw = _strip_heading(line)
-        if not is_h or not text:
-            out.append(raw)
+        if is_h and text:
+            lvl = level_fn(text)
+            if lvl == 0:
+                # heading without a recognizable number: keep as ## so it does
+                # not compete with level-1 sections
+                lvl = 2
+            out.append(f"{'#' * lvl} {text}")
             continue
 
-        lvl = _en_level(text) if language == "en" else _cn_level(text)
-        if lvl == 0:
-            # heading without a recognizable number: keep as ## so it does not
-            # pollute level-1 sections
-            lvl = 2
-        prefix = "#" * lvl
-        out.append(f"{prefix} {text}")
+        # plain (non-heading) line: optionally promote if it looks like a
+        # numbered section title — short, not a table row
+        if promote_plain:
+            s = raw.strip()
+            if s and "|" not in s and len(s) <= cap:
+                lvl = level_fn(s)
+                if lvl:
+                    out.append(f"{'#' * lvl} {s}")
+                    continue
+        out.append(raw)
 
     return "\n".join(out)

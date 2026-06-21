@@ -15,7 +15,12 @@ if str(_SKILL_ROOT) not in sys.path:
 
 REQUIRED = ["requests", "pandas", "openpyxl", "pypdf", "fitz",
             "markdown2", "docx", "PIL"]
-OPTIONAL = {"docling": "本地 Docling 解析（不装则只能用云端 MinerU）"}
+OPTIONAL = {
+    "docling": "本地 Docling 解析（不装则只能用云端 MinerU；安装会顺带带入 "
+               "rapidocr=PP-OCR 后端，可作扫描页 OCR）",
+    "pytesseract": "旋转预处理的 OSD 视觉二次验证（--rotate-osd）与图片数字预筛；"
+                   "另需 tesseract 二进制",
+}
 
 
 def main() -> int:

@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from engine.profile import load_profile, Profile
 from engine.download import download as do_download
-from engine.convert import pdf_to_md as do_convert
+from engine.convert import pdf_to_md as do_convert, RECOGNIZED_MD_SUFFIX
 from engine.extract import extract_all, save_results
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -104,10 +104,10 @@ def run_profile(
         # ── 3. extract ────────────────────────────────────────────
         if "extract" in stages:
             if not md_path:
-                # try to infer from the pdf ("_提取结果" is the fixed
-                # recognition-output suffix — wire format, keep as is)
+                # try to infer from the pdf using the recognition-output suffix
                 if pdf_path:
-                    cand = Path(pdf_path).parent / f"{Path(pdf_path).stem}_提取结果.md"
+                    cand = (Path(pdf_path).parent /
+                            f"{Path(pdf_path).stem}{RECOGNIZED_MD_SUFFIX}.md")
                     if cand.exists():
                         md_path = str(cand)
             if not md_path or not Path(md_path).exists():
